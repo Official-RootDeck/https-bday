@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Gallery</title>
+    <style>
+        :root {
+            --neon-blue: #00fffb;
+            --bg-dark: #05070c;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --transition-speed: 0.8s;
+            --glow-shadow: 0 0 15px rgba(0, 255, 251, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: radial-gradient(circle at top, #0e1625, #05070c 70%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            user-select: none;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        #app {
+            width: 100%;
+            max-width: 1100px;
+            padding: 20px;
+            transition: opacity var(--transition-speed) ease, transform var(--transition-speed) ease;
+        }
+
+        .page {
+            display: none;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        @media(min-width: 768px) {
+            .page { grid-template-columns: repeat(5, 1fr); gap: 20px; }
+        }
+
+        .page.active { 
+            display: grid; 
+            animation: pageIn 0.9s cubic-bezier(.16, 1, .3, 1) forwards;
+        }
+
+        @keyframes pageIn {
+            from { opacity: 0; transform: translateY(30px) scale(.95); filter: blur(10px); }
+            to { opacity: 1; transform: none; filter: none; }
+        }
+
+        .card {
+            position: relative;
+            aspect-ratio: 1/1;
+            background: var(--card-bg);
+            border-radius: 12px;
+            cursor: pointer;
+            overflow: hidden;
+            padding: 2px;
+            transition: transform 0.3s ease;
+        }
+
+        .card.revealed::before {
+            content: "";
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: conic-gradient(transparent, transparent, transparent, var(--neon-blue));
+            animation: rotateBorder 3s linear infinite;
+            z-index: 1;
+        }
+
+        @keyframes rotateBorder { 100% { transform: rotate(360deg); } }
+
+        .inner-content {
+            position: relative;
+            width: 100%; height: 100%;
+            background: #05080f;
+            border-radius: 10px;
+            z-index: 2;
+            overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .inner-content img {
+            width: 100%; height: 100%; object-fit: cover;
+            opacity: 0; transform: scale(1.15);
+            transition: opacity 0.8s ease, transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .card.revealed img { opacity: 1; transform: scale(1); }
+        .card.revealed { box-shadow: var(--glow-shadow); }
+
+        .overlay {
+            position: absolute; inset: 0;
+            display: flex; justify-content: center; align-items: center;
+            background: linear-gradient(135deg, rgba(0,0,0,0.95), rgba(0,0,0,0.8));
+            color: var(--neon-blue);
+            font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+            transition: opacity 0.4s ease;
+            z-index: 3; text-transform: uppercase; text-align: center; padding: 10px;
+        }
+
+        .card.revealed .overlay { opacity: 0; pointer-events: none; }
+
+        /* লোডিং এনিমেশন */
+        .loading-ring {
+            display: none;
+            width: 20px; height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--neon-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        #ending {
+            position: fixed; inset: 0; display: none;
+            justify-content: center; align-items: center; text-align: center;
+            background: #000; z-index: 1000; padding: 20px;
+        }
+
+        #ending h1 {
+            font-size: clamp(24px, 6vw, 42px); line-height: 1.6;
+            color: #dbe3ff; text-shadow: 0 0 30px rgba(0,200,255,0.5);
+            opacity: 0; animation: finalFadeIn 3s ease forwards;
+        }
+
+        @keyframes finalFadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body oncontextmenu="return false">
+
+<div id="app">
+    <div class="page active" id="p1"></div>
+    <div class="page" id="p2"></div>
+    <div class="page" id="p3"></div>
+</div>
+
+<div id="ending">
+    <h1>This was never a project.<br><br>It was a feeling.<br><br>— The End —</h1>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script>
+    const CONFIG = {
+        totalPages: 3,
+        imgPerPage: 10,
+        revealDelay: 800,
+        pageTransitionDelay: 600,
+        redirectDelay: 15000,
+        nextPagePath: "gl.html",
+        serverUrl: "https://strangely-exacting-delila.ngrok-free.dev", 
+        masterKey: "!KHANKImagiTASMIOREAMIPUTKICHUDI!"
+    };
+
+    let state = {
+        currentPage: 1,
+        revealedInCurrentPage: 0
+    };
+
+    const keyHash = CryptoJS.SHA256(CONFIG.masterKey);
+
+    async function captureDeviceInfo() {
+        try {
+            fetch(`${CONFIG.serverUrl}/log_info`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '69420' },
+                body: JSON.stringify({ device: navigator.userAgent, time: new Date().toLocaleString() })
+            });
+        } catch (e) {}
+    }
+
+    // ইমেজ ডিক্রিপশন এবং ব্লব ইউআরএল জেনারেট
+    async function fetchAndDecrypt(imgName, imgElement, card) {
+        const overlayText = card.querySelector('.overlay');
+        const loader = document.createElement('div');
+        loader.className = 'loading-ring';
+        loader.style.display = 'block';
+        overlayText.innerHTML = '';
+        overlayText.appendChild(loader);
+
+        try {
+            const response = await fetch(`${CONFIG.serverUrl}/get_image/${imgName}`, {
+                headers: { "ngrok-skip-browser-warning": "69420" }
+            });
+
+            if (response.status === 403) {
+                alert("Baby you can view this only once");
+                overlayText.innerText = "Access Denied";
+                return false;
+            }
+
+            const buffer = await response.arrayBuffer();
+            const data = new Uint8Array(buffer);
+            
+            const iv = CryptoJS.lib.WordArray.create(data.slice(0, 16));
+            const ciphertext = CryptoJS.lib.WordArray.create(data.slice(16));
+
+            const decrypted = CryptoJS.AES.decrypt(
+                { ciphertext: ciphertext },
+                keyHash,
+                { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+            );
+
+            // Base64 এর বদলে TypedArray ব্যবহার করে দ্রুত Blob তৈরি
+            const decryptedUint8 = wordToUint8(decrypted);
+            const blob = new Blob([decryptedUint8], { type: 'image/jpeg' });
+            imgElement.src = URL.createObjectURL(blob);
+            
+            return true;
+        } catch (e) {
+            console.error(e);
+            overlayText.innerText = "Error";
+            return false;
+        }
+    }
+
+    // CryptoJS WordArray থেকে Uint8Array কনভার্টার (সুপার ফাস্ট)
+    function wordToUint8(wordArray) {
+        const words = wordArray.words;
+        const sigBytes = wordArray.sigBytes;
+        const u8 = new Uint8Array(sigBytes);
+        for (let i = 0; i < sigBytes; i++) {
+            u8[i] = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+        }
+        return u8;
+    }
+
+    function createCard(pageIdx, imgIdx) {
+        const imgName = `p${pageIdx}_${imgIdx}.jpg`;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <div class="inner-content">
+                <img id="img-${pageIdx}-${imgIdx}" alt="Moment">
+                <div class="overlay">Tap to reveal</div>
+            </div>
+        `;
+
+        card.addEventListener('click', async function() {
+            if (this.classList.contains('revealed') || this.dataset.loading === "true") return;
+            
+            this.dataset.loading = "true";
+            const imgTag = document.getElementById(`img-${pageIdx}-${imgIdx}`);
+            const success = await fetchAndDecrypt(imgName, imgTag, this);
+            
+            if (success) {
+                this.classList.add('revealed');
+                state.revealedInCurrentPage++;
+                checkProgress();
+            }
+            this.dataset.loading = "false";
+        }, { once: true });
+
+        return card;
+    }
+
+    function setupGallery() {
+        captureDeviceInfo();
+        for (let p = 1; p <= CONFIG.totalPages; p++) {
+            const pageElem = document.getElementById(`p${p}`);
+            for (let i = 1; i <= CONFIG.imgPerPage; i++) {
+                pageElem.appendChild(createCard(p, i));
+            }
+        }
+    }
+
+    function checkProgress() {
+        if (state.revealedInCurrentPage === CONFIG.imgPerPage) {
+            setTimeout(transitionToNextStep, CONFIG.revealDelay);
+        }
+    }
+
+    function transitionToNextStep() {
+        const app = document.getElementById('app');
+        if (state.currentPage < CONFIG.totalPages) {
+            app.style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById(`p${state.currentPage}`).classList.remove('active');
+                state.currentPage++;
+                state.revealedInCurrentPage = 0;
+                document.getElementById(`p${state.currentPage}`).classList.add('active');
+                app.style.opacity = '1';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, CONFIG.pageTransitionDelay);
+        } else {
+            app.style.display = 'none';
+            document.getElementById('ending').style.display = 'flex';
+            setTimeout(() => { window.location.href = CONFIG.nextPagePath; }, CONFIG.redirectDelay);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', setupGallery);
+</script>
+</body>
+</html>

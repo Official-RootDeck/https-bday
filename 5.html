@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Happy Birthday Tasmi</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: radial-gradient(circle, #2d140b 0%, #000000 100%); 
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            touch-action: none;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 5%; 
+            width: 100%;
+            text-align: center;
+            color: #ffeb3b;
+            pointer-events: none;
+            text-shadow: 0px 4px 15px rgba(255, 235, 59, 0.8);
+            z-index: 10;
+        }
+        h1 { 
+            font-size: clamp(1.5rem, 7vw, 3rem);
+            margin: 0; 
+            font-weight: 900; 
+            text-transform: uppercase;
+        }
+        .instruction {
+            font-size: clamp(0.9rem, 4vw, 1.2rem);
+            color: #ffffff;
+            margin-top: 8px;
+        }
+
+        #gemini-card {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            max-width: 380px;
+            background: rgba(15, 15, 15, 0.98); 
+            border-radius: 20px;
+            padding: 25px 15px;
+            color: #ffffff; 
+            text-align: center;
+            display: none; 
+            border: 2px solid #ff4081;
+            z-index: 100;
+            box-shadow: 0 0 50px rgba(255, 64, 129, 0.6);
+        }
+
+        #close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 30px;
+            color: #ff4081;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #gemini-wish {
+            font-style: italic;
+            font-size: 1rem;
+            margin: 15px 0;
+            line-height: 1.6;
+        }
+
+        #image-container {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #444;
+            background: #000;
+        }
+
+        #gemini-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <h1 id="main-title">Happy Birthday Tasmi</h1>
+        <p class="instruction" id="hint">Tap to blow the candle</p>
+    </div>
+
+    <div id="gemini-card">
+        <div id="close-btn" onclick="resetCake()">×</div>
+        <div id="gemini-wish">"Wishing you a day filled with love, laughter, and all the things that make you happy. May your year ahead be as wonderful as you are!"</div>
+        <div id="image-container">
+            <img id="gemini-image" src="icon/logogo.png" alt="Birthday Special" onerror="this.parentElement.style.display='none'">
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        let scene, camera, renderer, cakeGroup, flame, flameLight;
+        let clickCount = 0;
+        let isCut = false;
+        const LAYER_COLORS = [0x4e2a0f, 0xfff9e3, 0x2b1608];
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            updateCameraPosition();
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            document.body.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0xffffff, 1.2);
+            pointLight.position.set(5, 10, 5);
+            scene.add(pointLight);
+
+            cakeGroup = new THREE.Group();
+            // কেকের রোটেশন একবারে সেট করা হয়েছে যাতে কাটা অংশ সরাসরি ইউজারের দিকে থাকে
+            cakeGroup.rotation.y = -Math.PI / 2.1; 
+            createStackedCake(false);
+            scene.add(cakeGroup);
+
+            const plateGeo = new THREE.CylinderGeometry(5.5, 5.8, 0.25, 64);
+            const plateMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee });
+            const plate = new THREE.Mesh(plateGeo, plateMat);
+            plate.position.y = -1.65;
+            scene.add(plate);
+
+            window.addEventListener('pointerdown', (e) => {
+                if (document.getElementById('gemini-card').style.display !== 'block') {
+                    handleInteraction();
+                }
+            });
+
+            animate();
+        }
+
+        function updateCameraPosition() {
+            const aspect = window.innerWidth / window.innerHeight;
+            if (aspect < 1) { // Mobile
+                camera.position.set(0, 7, 18);
+            } else { // Web
+                camera.position.set(0, 5, 14);
+            }
+            camera.lookAt(0, 0, 0);
+        }
+
+        function createStackedCake(withCut) {
+            cakeGroup.clear();
+            const totalHeight = 3.3;
+            const layerCount = 120; // Optimization for smooth performance
+            const layerThickness = totalHeight / layerCount;
+            const radius = 3.5;
+            
+            // Missing chunk (User POV)
+            const gapAngle = Math.PI * 0.4;
+            const thetaStart = withCut ? gapAngle / 2 : 0;
+            const thetaLength = withCut ? Math.PI * 2 - gapAngle : Math.PI * 2;
+
+            for (let i = 0; i < layerCount; i++) {
+                const colorIdx = Math.floor((i / layerCount) * LAYER_COLORS.length);
+                const geo = new THREE.CylinderGeometry(radius, radius, layerThickness + 0.01, 64, 1, false, thetaStart, thetaLength);
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: LAYER_COLORS[colorIdx % LAYER_COLORS.length],
+                    roughness: 0.8
+                });
+                const layerMesh = new THREE.Mesh(geo, mat);
+                layerMesh.position.y = -1.5 + (i * layerThickness);
+                cakeGroup.add(layerMesh);
+            }
+
+            // Inner wall slices (To show the inside of the cake)
+            if (withCut) {
+                const wallAngles = [thetaStart, thetaStart + thetaLength];
+                wallAngles.forEach((angle) => {
+                    const wallGeo = new THREE.PlaneGeometry(radius, totalHeight);
+                    const wallMat = new THREE.MeshStandardMaterial({ color: 0x3d1f0a, side: THREE.DoubleSide });
+                    const wall = new THREE.Mesh(wallGeo, wallMat);
+                    wall.rotation.y = angle + Math.PI / 2;
+                    wall.position.x = (radius / 2) * Math.cos(angle);
+                    wall.position.z = -(radius / 2) * Math.sin(angle);
+                    wall.position.y = 0.15;
+                    cakeGroup.add(wall);
+                });
+            }
+
+            // Candle
+            const candleGeo = new THREE.CylinderGeometry(0.12, 0.12, 2);
+            const candleMat = new THREE.MeshStandardMaterial({ color: 0x00d2ff });
+            const candle = new THREE.Mesh(candleGeo, candleMat);
+            candle.position.y = 2.5;
+            cakeGroup.add(candle);
+
+            // Flame
+            if (clickCount < 1) {
+                const flameGeo = new THREE.SphereGeometry(0.2, 16, 16);
+                const flameMat = new THREE.MeshBasicMaterial({ color: 0xffd54f });
+                flame = new THREE.Mesh(flameGeo, flameMat);
+                flame.position.y = 3.7;
+                flame.scale.set(0.6, 2.5, 0.6);
+                cakeGroup.add(flame);
+                flameLight = new THREE.PointLight(0xffaa00, 3, 10);
+                flameLight.position.set(0, 3.8, 0);
+                cakeGroup.add(flameLight);
+            }
+        }
+
+        function handleInteraction() {
+            if (clickCount >= 2) return;
+            clickCount++;
+            if (clickCount === 1) {
+                if(flame) {
+                    flame.visible = false;
+                    flameLight.intensity = 0;
+                    document.getElementById('hint').innerText = "Click to cut the cake!";
+                }
+            } else if (clickCount === 2) {
+                isCut = true;
+                createStackedCake(true);
+                document.getElementById('hint').innerText = "Surprise! ❤️";
+                setTimeout(() => {
+                    document.getElementById('gemini-card').style.display = 'block';
+                }, 300);
+            }
+        }
+
+        window.resetCake = function() {
+            clickCount = 0;
+            isCut = false;
+            document.getElementById('gemini-card').style.display = 'none';
+            document.getElementById('hint').innerText = "Tap to blow the candle";
+            createStackedCake(false);
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (flame && flame.visible) {
+                const s = 1 + Math.sin(Date.now() * 0.01) * 0.1;
+                flame.scale.set(0.6 * s, 2.5 * s, 0.6 * s);
+                flameLight.intensity = 2 + Math.random() * 0.5;
+            }
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            updateCameraPosition();
+        });
+
+        window.onload = init;
+// রাইট ক্লিক ডিজেবল করো
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    return false;
+});
+
+// ডেভেলপার টুলস খোলার কিছু কী-বোর্ড শর্টকাট ডিজেবল করো (অপশনাল)
+document.addEventListener('keydown', function(e) {
+    // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U ডিজেবল
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) ||
+        (e.ctrlKey && e.key === 'u')) {
+        e.preventDefault();
+        return false;
+    }
+});
+
+// সিলেক্ট করাও ডিজেবল করতে চাইলে (অপশনাল)
+document.addEventListener('selectstart', function(e) {
+    e.preventDefault();
+    return false;
+});
+
+    </script>
+</body>
+</html>

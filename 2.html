@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You are special!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* CSS ফিক্সড এবং অর্গানাইজড */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #0d0111; 
+            color: white; 
+            font-family: 'Poppins', sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+        .bg-hearts { 
+            position: fixed; 
+            width: 100%; 
+            height: 100%; 
+            background-image: url('https://www.transparenttextures.com/patterns/heart.png'); 
+            opacity: 0.1; 
+            z-index: -1; 
+        }
+        .container { 
+            width: 100%; 
+            max-width: 400px; 
+            text-align: center; 
+            padding: 20px; 
+        }
+        .screen { 
+            display: none; 
+            animation: slideUp 0.6s ease; 
+        }
+        .screen.active { 
+            display: block; 
+        }
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(30px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        
+        .script-font { 
+            font-family: 'Dancing Script', cursive; 
+            font-size: 3.5rem; 
+            color: #ff69b4; 
+            margin-bottom: 10px; 
+        }
+        
+        /* ইমেজ ফিক্স */
+        .profile-pic img { 
+            width: 150px; 
+            height: 150px; 
+            border-radius: 50%; 
+            border: 4px solid #ff007f; 
+            margin-bottom: 20px; 
+            box-shadow: 0 0 20px #ff007f; 
+            object-fit: cover; 
+        }
+
+        .main-btn { 
+            background: linear-gradient(45deg, #ff007f, #ff69b4); 
+            border: none; 
+            color: white; 
+            padding: 12px 30px; 
+            border-radius: 25px; 
+            cursor: pointer; 
+            margin-top: 20px; 
+            font-weight: 600; 
+        }
+        
+        .meter-container { 
+            width: 100%; 
+            height: 20px; 
+            background: #220022; 
+            border-radius: 10px; 
+            margin: 20px 0; 
+            border: 1px solid #ff007f; 
+            overflow: hidden; 
+        }
+        .meter-fill { 
+            height: 100%; 
+            width: 0%; 
+            background: #ff007f; 
+            transition: width 0.1s linear; 
+        }
+        
+        .heart-list { 
+            margin-top: 20px; 
+            max-height: 280px; 
+            overflow-y: auto; 
+            padding-right: 5px; 
+        }
+        .heart-row { 
+            width: 100%; 
+            background: rgba(255, 255, 255, 0.05); 
+            border: 1px solid #ff007f; 
+            padding: 12px; 
+            margin: 6px 0; 
+            border-radius: 10px; 
+            color: #ff69b4; 
+            cursor: pointer; 
+        }
+        .heart-row span { 
+            opacity: 0; 
+            transition: opacity 0.4s ease; 
+        }
+        .heart-row.revealed { 
+            background: #ff007f; 
+            color: white; 
+        }
+        .heart-row.revealed span { 
+            opacity: 1; 
+        }
+        
+        /* নোট বক্সের জন্য আপডেটেড CSS */
+        .note-box {
+            background: #ff85c0;
+            color: #330033;
+            padding: 25px;
+            border-radius: 15px;
+            
+            /* গুরুত্বপূর্ণ: height এবং overflow control */
+            max-height: 60vh;  /* viewport height অনুযায়ী */
+            min-height: 300px;
+            overflow-y: auto;   /* scroll enable */
+            
+            /* Text styling */
+            font-size: 1rem;
+            line-height: 1.6;
+            text-align: left;
+            
+            /* Smooth scroll for auto-scroll */
+            scroll-behavior: smooth;
+            
+            /* Flex for button positioning */
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #text-box {
+            flex: 1;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        
+        /* মোবাইলের জন্য রেসপন্সিভ */
+        @media (max-width: 600px) {
+            .note-box {
+                max-height: 50vh;  /* মোবাইলে একটু ছোট */
+                font-size: 0.95rem;
+                padding: 20px;
+            }
+        }
+
+        .hidden { 
+            display: none; 
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { 
+            width: 5px; 
+        }
+        ::-webkit-scrollbar-thumb { 
+            background: #ff007f; 
+            border-radius: 10px; 
+        }
+        
+        /* Next page button positioning */
+        #next-page-btn {
+            margin-top: 20px;
+            align-self: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-hearts"></div>
+    <div class="container">
+        <div class="screen active" id="screen-1">
+            <div class="profile-pic">
+                <img src="icons/tasmi.png">
+            </div>
+            <h1 class="script-font">Hey Beautiful</h1>
+            <p>Do you even know how cute you are?</p>
+            <button class="main-btn" onclick="next(1, 2)">Open My Heart 💖</button>
+        </div>
+
+        <div class="screen" id="screen-2">
+            <h2>Measuring your cuteness...</h2>
+            <div class="meter-container"><div class="meter-fill" id="fill"></div></div>
+            <h2 id="percent">0%</h2>
+            <p id="warning" class="hidden">⚠️ WARNING: TOO CUTE TO HANDLE</p>
+        </div>
+
+        <div class="screen" id="screen-3">
+            <h2 class="script-font">Just for you</h2>
+            <p>Tap all 8 to reveal</p>
+            <div class="heart-list">
+                <button class="heart-row" onclick="reveal(this)"><span>You may be gone, but your memories still live quietly inside my heart.</span></button>
+                <button class="heart-row" onclick="reveal(this)"><span>We don’t talk anymore, yet you’re still a part of my everyday thoughts.</span></button>
+                <button class="heart-row" onclick="reveal(this)"><span>Loving you didn’t end when you left — it just learned how to stay silent.</span></button>
+                <button class="heart-row" onclick="reveal(this)"><span>Some people leave, but the way they changed us never does.</span></button>
+                <button class="heart-row" onclick="reveal(this)"><span>I still smile at the memories, even if they hurt tho.</span></button>
+                <button class="heart-row" onclick="reveal(this)"><span>You were once my favorite chapter — and I’ll always be grateful for it.</span></button>
+                <button class="heart-row" onclick="reveal(this)"><span>Not all love stories last forever, but some stay forever in the soul.</span></button>
+                <button class="heart-row" onclick="reveal(this)"><span>virus will always love you</span></button>
+            </div>
+            <button class="main-btn hidden" id="btn-3" onclick="next(3, 4)">See more →</button>
+        </div>
+
+        <div class="screen" id="screen-4">
+            <h2 class="script-font">A little note...</h2>
+            <div class="note-box" id="note-box">
+                <div id="text-box"></div>
+                <button class="main-btn hidden" id="next-page-btn" onclick="goToNextPage()">Next Page →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function next(curr, nextId) {
+            document.getElementById('screen-' + curr).classList.remove('active');
+            document.getElementById('screen-' + nextId).classList.add('active');
+            if (nextId === 2) startMeter();
+            if (nextId === 4) startTyping();
+        }
+
+        function startMeter() {
+            let width = 0;
+            let timer = setInterval(() => {
+                if (width >= 120) {
+                    clearInterval(timer);
+                    document.getElementById('warning').classList.remove('hidden');
+                    setTimeout(() => next(2, 3), 3000);
+                } else {
+                    width++;
+                    document.getElementById('fill').style.width = (width > 100 ? 100 : width) + '%';
+                    document.getElementById('percent').innerText = width + '%';
+                }
+            }, 40);
+        }
+
+        let count = 0;
+        function reveal(btn) {
+            if (!btn.classList.contains('revealed')) {
+                btn.classList.add('revealed');
+                count++;
+                if (count === 8) document.getElementById('btn-3').classList.remove('hidden');
+            }
+        }
+
+        function startTyping() {
+            const msg = `January 8th, 2024 — that was the first day we spoke. March 13th, 2024 — that was the last.
+
+Between those dates, we shared 430 days — 10,320 hours of walking a path together. Maybe it was fate. Maybe it was written long before we ever met.
+
+I know I hurt you in many ways. Even after March 13th, there were moments when I caused you more pain. For that, I am truly sorry. You were deeply attached to me, and sometimes I felt that if I hadn’t acted the way I did, you wouldn’t have been able to move on. I stepped away because I saw you slowly losing yourself, and that was something I never wanted for you.
+
+I made mistakes. I acted without thinking. I caused you stress when I should have protected your peace. For all of that, I carry sincere regret.
+
+It has been a long time since we last spoke. Maybe you’ve forgotten me by now — I honestly hope you have. And truthfully, I’m slowly forgetting things too. Your voice, your face, the little details of our journey — they fade more each day. I don’t remember things the way I used to. Still, I try to hold on to what I can.
+
+Last year, I celebrated your birthday in a simple way. This year, even if it’s not the same, I wanted to make it a little more special — even if only virtually.
+
+No matter where life takes us, I sincerely wish you a very happy birthday. May Allah bless you, protect your heart, and may 2026 bring nothing but peace and joy into your life.`;
+
+            let i = 0;
+            let box = document.getElementById('text-box');
+            let noteBox = document.getElementById('note-box');
+            
+            // Clear previous content
+            box.innerHTML = '';
+
+            function type() {
+                if (i < msg.length) {
+                    box.innerHTML += msg.charAt(i);
+                    i++;
+                    
+                    // Auto-scroll to bottom
+                    noteBox.scrollTop = noteBox.scrollHeight;
+                    
+                    setTimeout(type, 40); // typing speed
+                } else {
+                    document.getElementById('next-page-btn').classList.remove('hidden');
+                }
+            }
+
+            type();
+        }
+
+        function goToNextPage() {
+            window.location.href = '3.html';
+        }
+// রাইট ক্লিক ডিজেবল করো
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    return false;
+});
+
+// ডেভেলপার টুলস খোলার কিছু কী-বোর্ড শর্টকাট ডিজেবল করো (অপশনাল)
+document.addEventListener('keydown', function(e) {
+    // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U ডিজেবল
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) ||
+        (e.ctrlKey && e.key === 'u')) {
+        e.preventDefault();
+        return false;
+    }
+});
+
+// সিলেক্ট করাও ডিজেবল করতে চাইলে (অপশনাল)
+document.addEventListener('selectstart', function(e) {
+    e.preventDefault();
+    return false;
+});
+    </script>
+</body>
+</html>
